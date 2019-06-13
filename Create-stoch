@@ -1,0 +1,301 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 04 15:59:01 2018
+
+@author: acir001
+"""
+
+from mulgrids import *
+from t2grids import *
+from t2listing import *
+from t2data import *
+from geometry import *
+from t2incons import *
+import matplotlib.pyplot as plt
+from copy import copy
+from datetime import date
+import os
+import pylab
+import numpy as np
+import operator
+
+os.chdir('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin')
+geo = mulgrid('g_real_model.dat') # creates a mulgrid object named geo
+dat = t2data('rot.dat')
+inc = t2incon(dat.filename[:-4] + '.save')
+inc.write(dat.filename[:-4] + '_prod.incon')
+
+#convert SAVE to incon
+inc = t2incon(dat.filename[:-4] + '.save')
+inc.write(dat.filename[:-4] + '.incon')
+
+no_of_years = 50.0
+    
+dat.write(dat.filename[:-4] + '_prod.dat')
+
+# Create Production data
+#name = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+#percentage_RI =[0.7,0.7,0.9,0.9,0.8,0.8,0.8,0.8,0.7,0.9,0.7,0.9,0.8] 
+#porosity = [0.05,0.1,0.05,0.1,0.05,0.1,0.05,0.1,0.075,0.075,0.075,0.075,0.075]
+#enthalpy_RI = [632300,632300,632300,632300,589200,589200,675600,675600,589200,
+#               589200,675600,675600,632300]
+
+
+prod_rocks = ['EXP00', 'EXP01', 'EXP02', 'EXP03', 'EXP04', 'EXP05', 
+              'EXP06', 'EXP07', 'EXP08', 'EXP09', 'EXP10']
+
+name = range(1,730)
+#no_of_years = [10., 15., 30.]*27
+
+porlow = 0.01
+pormid = 0.155
+porhi = 0.3
+porosity = [porlow, pormid, porhi]*243
+
+hrilow = 334900.
+hrimid =503800.
+hrihi = 675600.
+hri = [hrilow]*3 + [hrimid]*3 + [hrihi]*3
+enthalpy_RI = hri*81
+
+rilow = 0.5
+rimid = 0.7
+rihi = 0.9
+ri = [rilow]*9 + [rimid]*9 + [rihi]*9
+percentage_RI = ri*27
+
+kxlow = np.array(1.0e-15)
+kxmid = np.array(5.0e-13)
+kxhi = np.array(1.0e-12)
+kxperm = [kxlow]*27 + [kxmid]*27 + [kxhi]*27 
+kx = kxperm*9
+
+kylow = np.array(1.0e-15)
+kymid = np.array(5.0e-13)
+kyhi = np.array(1.0e-12)
+kyperm = [kxlow]*81 + [kxmid]*81 + [kxhi]*81 
+ky = kyperm*3
+
+kzlow = np.array(1.0e-15)
+kzmid = np.array(5.0e-13)
+kzhi = np.array(1.0e-12)
+kz = [kxlow]*243 + [kxmid]*243 + [kxhi]*243 
+
+
+for i in range(len(percentage_RI)):
+    dat = t2data('rot_prod.dat')
+    dat.short_output['generator'] = []
+    dat.short_output['block'] = []
+    dat.parameter.update(
+    {'const_timestep':86400.0,
+     'max_timesteps': 9999,
+     'max_timestep': 2592000.0,
+     'tstop':no_of_years*365*24*3600.0,
+     'print_interval': 1000,})
+    prodtimes = np.arange(0.0, no_of_years*365*24*3600,24*3600*30)
+    oh_rates = [-25]*len(prodtimes)
+    oh_names =  ['BRA 1', 'BRA 2', 'BRF 1', 'BRF 2',
+	'BRN 1', 'BRN 2', 'BRO 1', 'BRO 2', 
+	'BRT 1', 'BRT 2', 'BRU 1', 'BRU 2','BRZ 1', 'BRZ 2','BRC11', 'BRC12', 'BRD11', 'BRD12']
+    oh_blocks = ['aes47', 'aes51', 
+                 ' th47', ' th51',
+                 ' lu47', ' lu51', ' sv47', ' sv51', 
+                 ' mc47', ' mc51', ' rq47', ' rq51',
+                 'abg47', 'abg51',
+                 'aar47', 'aar51', ' yp47', ' yp51']
+	
+    #oh_blocks = ['aes47', 'aes53', 'aeg47', 'aeg53', ' ok47', ' ok53',
+                 #'aev47', 'aev53', 'aef47', 'aef53', ' th47', ' th53',
+                 #'aea47', 'aea53', ' kp47', ' kp53', ' nm47', ' nm53',
+                 #' te47', ' te53', 'ady47', 'ady53', ' rc47', ' rc53',
+                 #, ' lu47', ' lu53', ' sv47', ' sv53', ' nm47', ' nm51', 
+                 #' rf47', ' rf53', ' oz47', ' oz53', ' kf47', ' kf53',
+                 #' su47', ' su53', ' mc47', ' mc53', ' rq47', ' rq53',
+                 #' kh47', ' kh53', ' sr47', ' sr53', ' kq47', ' kq53',
+                 #' uu47', ' uu53', 'abg47', 'abg53', ' bh47', ' bh53',
+                 #'abf47', 'abf53', 'aar47', 'aar53', ' yp47', ' yp53',
+                 #' zi47', ' zi53', 'aap47', 'aap53', ' up47', ' up53', ' ox47', ' ox53']
+	
+    #oh_names =  ['BRA 1', 'BRA 2', 'BRB 1', 'BRB 2', 'BRC 1', 'BRC 2',
+                 #'BRD 1', 'BRD 2', 'BRE 1', 'BRE 2', 'BRF 1', 'BRF 2',
+                 #'BRG 1', 'BRG 2', 'BRH 1', 'BRH 2', 'BRI 1', 'BRI 2',
+                 #'BRJ 1', 'BRJ 2', 'BRK 1', 'BRK 2', 'BRL 1', 'BRL 2',
+                 # 'BRN 1', 'BRN 2', 'BRO 1', 'BRO 2',
+                 #'BRP 1', 'BRP 2', 'BRQ 1', 'BRQ 2', 'BRR 1', 'BRR 2',
+                 #'BRS 1', 'BRS 2', 'BRT 1', 'BRT 2', 'BRU 1', 'BRU 2',
+                 #'BRV 1', 'BRV 2', 'BRW 1', 'BRW 2', 'BRX 1', 'BRX 2',
+                 #'BRY 1', 'BRY 2', 'BRZ 1', 'BRZ 2', 'BRA11', 'BRA12',
+                 #'BRB11', 'BRB12', 'BRC11', 'BRC12', 'BRD11', 'BRD12',
+                 #'BRE11', 'BRE12', 'BRF11', 'BRF12', 'BRG11', 'BRG12', 'BRM 1', 'BRM 2']
+    
+    for rock in prod_rocks:
+        dat.grid.rocktype[rock].porosity = porosity[i]
+        dat.grid.rocktype[rock].permeability[0] = kx[i]
+        dat.grid.rocktype[rock].permeability[1] = ky[i]
+        dat.grid.rocktype[rock].permeability[2] = kz[i]
+        
+    for j in range(0,len(oh_blocks)):
+        gen_oh = t2generator(name = oh_names[j], block = oh_blocks[j], ltab=len(oh_rates), rate=oh_rates, time=prodtimes, type = 'MASS')
+		#gen_oh = t2generator(name = oh_names[j], block = oh_blocks[j], type = 'DELG', ex = 4.0e+06, gx = 1.0e-12)
+        dat.add_generator(gen_oh)
+        dat.short_output['generator'].append(gen_oh)
+        dat.short_output['block'].append(dat.grid.block[oh_blocks[j]])
+		   
+    #ri_block = [' fn47', ' fn53', ' bp47', ' bp53', ' ds47', ' ds53',
+                #' ev47', ' ev53', ' dq47', ' dq53', ' ww47', ' ww53',
+                #' yi47', ' yi53', ' gp47', ' gp53', ' go47', ' go53',
+                #' fj47', ' fj53', 'abl47', 'abl53', 'adn47', 'adn53',
+                #'abt47', 'abt53', 'adp47', 'adp53', 'acw47', 'acw53',
+                #' yr47', ' yr53', 'abd47', 'abd53', 'acu47', 'acu53',
+                #' cw47', ' cw53', 'abb47', 'abb53']
+    ri_block = [' fn47', ' fn51', ' bp47', ' bp51',
+                ' ev47', ' ev51', ' dq47', ' dq51',
+                'abl47', 'abl51', 'adn47', 'adn51',
+                'adp47', 'adp51', 'acw47', 'acw51']
+    ri_name = ['BIA 1', 'BIA 2', 'BIB 1', 'BIB 2',
+               'BID 1', 'BID 2', 'BIE 1', 'BIE 2',
+               'BIK 1', 'BIK 2', 'BIL 1', 'BIL 2',
+               'BIN 1', 'BIN 2', 'BIO 1', 'BIO 2']
+    
+    ri_rate = 450*0.7/16
+    
+    for j in range(0,len(ri_block)):
+        gen = t2generator(name = ri_name[j], block = ri_block[j], gx = ri_rate*percentage_RI[i] , ex = enthalpy_RI[i], ltab=len(oh_rates), rate=[ri_rate*percentage_RI[i]]*len(prodtimes), time=prodtimes, type = 'COM1')
+        dat.add_generator(gen)
+        dat.short_output['generator'].append(gen)
+        dat.short_output['block'].append(dat.grid.block[ri_block[j]])
+        
+    
+    dat.write(dat.filename[:-4] + str(name[i]) +'.dat')
+    dat.delete_generator(('aes47','BRA 1'))
+    dat.delete_generator(('aes51','BRA 2'))
+    #dat.delete_generator(('aeg47','BRB 1'))
+    #dat.delete_generator(('aeg53','BRB 2'))
+    #dat.delete_generator((' ok47','BRC 1'))
+    #dat.delete_generator((' ok51','BRC 2'))
+    #dat.delete_generator(('aev47','BRD 1'))
+    #dat.delete_generator(('aev53','BRD 2'))
+    #dat.delete_generator(('aef47','BRE 1'))
+    #dat.delete_generator(('aef53','BRE 2'))
+    dat.delete_generator((' th47','BRF 1'))
+    dat.delete_generator((' th51','BRF 2'))
+    #dat.delete_generator(('aea47','BRG 1'))
+    #dat.delete_generator(('aea53','BRG 2'))
+    #dat.delete_generator((' kp47','BRH 1'))
+    #dat.delete_generator((' kp53','BRH 2'))
+    #dat.delete_generator((' nm47','BRI 1'))
+    #dat.delete_generator((' nm51','BRI 2'))
+    #dat.delete_generator((' te47','BRJ 1'))
+    #dat.delete_generator((' te53','BRJ 2'))
+    #dat.delete_generator(('ady47','BRK 1'))
+    #dat.delete_generator(('ady53','BRK 2'))
+    #dat.delete_generator((' rc47','BRL 1'))
+    #dat.delete_generator((' rc51','BRL 2'))
+    #dat.delete_generator((' ox47','BRM 1'))
+    #dat.delete_generator((' ox51','BRM 2'))
+    dat.delete_generator((' lu47','BRN 1'))
+    dat.delete_generator((' lu51','BRN 2'))
+    dat.delete_generator((' sv47','BRO 1'))
+    dat.delete_generator((' sv51','BRO 2'))
+    #dat.delete_generator((' rf47','BRP 1'))
+    #dat.delete_generator((' rf51','BRP 2'))
+    #dat.delete_generator((' oz47','BRQ 1'))
+    #dat.delete_generator((' oz51','BRQ 2'))
+    #dat.delete_generator((' kf47','BRR 1'))
+    #dat.delete_generator((' kf53','BRR 2'))
+    #dat.delete_generator((' su47','BRS 1'))
+    #dat.delete_generator((' su53','BRS 2'))
+    dat.delete_generator((' mc47','BRT 1'))
+    dat.delete_generator((' mc51','BRT 2'))
+    dat.delete_generator((' rq47','BRU 1'))
+    dat.delete_generator((' rq51','BRU 2'))
+    #dat.delete_generator((' kh47','BRV 1'))
+    #dat.delete_generator((' kh51','BRV 2'))
+    #dat.delete_generator((' sr47','BRW 1'))
+    #dat.delete_generator((' sr53','BRW 2'))
+    #dat.delete_generator((' kq47','BRX 1'))
+    #dat.delete_generator((' kq53','BRX 2'))
+    #dat.delete_generator((' uu47','BRY 1'))
+    #dat.delete_generator((' uu53','BRY 2'))
+    dat.delete_generator(('abg47','BRZ 1'))
+    dat.delete_generator(('abg51','BRZ 2'))
+    #dat.delete_generator((' bh47','BRA11'))
+    #dat.delete_generator((' bh53','BRA12'))
+    #dat.delete_generator(('abf47','BRB11'))
+    #dat.delete_generator(('abf53','BRB12'))
+    dat.delete_generator(('aar47','BRC11'))
+    dat.delete_generator(('aar51','BRC12'))
+    dat.delete_generator((' yp47','BRD11'))
+    dat.delete_generator((' yp51','BRD12'))
+    #dat.delete_generator((' zi47','BRE11'))
+    #dat.delete_generator((' zi53','BRE12'))
+    #dat.delete_generator(('aap47','BRF11'))
+    #dat.delete_generator(('aap53','BRF12'))
+    #dat.delete_generator((' up47','BRG11'))
+    #dat.delete_generator((' up53','BRG12'))
+    dat.delete_generator((' fn47','BIA 1'))
+    dat.delete_generator((' fn51','BIA 2'))
+    dat.delete_generator((' bp47','BIB 1'))
+    dat.delete_generator((' bp51','BIB 2'))    
+    #dat.delete_generator((' ds47','BIC 1'))
+    #dat.delete_generator((' ds51','BIC 2'))
+    dat.delete_generator((' ev47','BID 1'))
+    dat.delete_generator((' ev51','BID 2'))
+    dat.delete_generator((' dq47','BIE 1'))
+    dat.delete_generator((' dq51','BIE 2'))
+   # dat.delete_generator((' ww47','BIF 1'))
+    #dat.delete_generator((' ww51','BIF 2'))
+    #dat.delete_generator((' yi47','BIG 1'))
+    #dat.delete_generator((' yi51','BIG 2'))
+    #dat.delete_generator((' gp47','BIH 1'))
+    #dat.delete_generator((' gp53','BIH 2'))
+    #dat.delete_generator((' go47','BII 1'))
+    #dat.delete_generator((' go51','BII 2'))
+    #dat.delete_generator((' fj47','BIJ 1'))
+    #dat.delete_generator((' fj53','BIJ 2'))
+    dat.delete_generator(('abl47','BIK 1'))
+    dat.delete_generator(('abl51','BIK 2'))
+    dat.delete_generator(('adn47','BIL 1'))
+    dat.delete_generator(('adn51','BIL 2'))
+    #dat.delete_generator(('abt47','BIM 1'))
+    #dat.delete_generator(('abt53','BIM 2'))
+    dat.delete_generator(('adp47','BIN 1'))
+    dat.delete_generator(('adp51','BIN 2'))
+    dat.delete_generator(('acw47','BIO 1'))
+    dat.delete_generator(('acw51','BIO 2'))
+    #dat.delete_generator((' yr47','BIP 1'))
+    #dat.delete_generator((' yr51','BIP 2'))
+    #dat.delete_generator(('abd47','BIQ 1'))
+    #dat.delete_generator(('abd53','BIQ 2'))
+    #dat.delete_generator(('acu47','BIR 1'))
+    #dat.delete_generator(('acu51','BIR 2'))
+    #dat.delete_generator((' cw47','BIS 1'))
+    #dat.delete_generator((' cw51','BIS 2'))
+    #dat.delete_generator(('abb47','BIT 1'))
+    #dat.delete_generator(('abb51','BIT 2'))
+    
+#Create batch file
+for i in range(1, 730):
+    f = open('run'+str(i)+'.bat', 'w')
+    f.write('AUTOUGH2_41.exe < run'+str(i)+'.in')
+    f.close
+    
+ #Create in file
+for i in range(1, 730):
+    f = open('run'+str(i)+'.in', 'w')
+    f.write('\n')
+    f.write('rot_prod' + '\n')
+    f.write('rot_prod'+str(i))
+    f.close
+    
+#Create multiple folders
+import shutil
+from shutil import copyfile
+
+for i in range(1, 730):
+    os.makedirs('run'+str(i))
+    shutil.move('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'rot_prod' + str(i) +'.dat', 'H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'run' + str(i) + '\\rot_prod' + str(i) +'.dat')
+    shutil.move('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\run'+ str(i) + '.bat', 'H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'run' + str(i) + '\\run' + str(i) + '.bat')
+    shutil.move('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\run'+ str(i) + '.in', 'H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'run' + str(i) + '\\run' + str(i) + '.in')
+    copyfile('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\AUTOUGH2_41.exe', 'H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'run' + str(i) + '\\AUTOUGH2_41.exe')
+    copyfile('H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\rot_prod.incon', 'H:\\Desktop\\thesis_simulation\\Ohaaki\\Oh_bin\\' + 'run' + str(i) + '\\rot_prod.incon')
